@@ -1,13 +1,17 @@
 /* eslint-disable prettier/prettier */
+
 /*
     title : Handeling request response
     Description: Handeling request response
     author: Rajib Miah
     Date: 6/7/2022
 */
+
 // dependancies
 const url = require('url');
 const { StringDecoder } = require('string_decoder');
+const routes = require('../routes');
+const { notFoundHandler } = require('../handlers/routes-handlers/notFoundHandler');
 
 // module scraffholding
 const handler = {};
@@ -22,9 +26,34 @@ handler.handleReqRes = (req, res) => {
     const queryStringObject = parsedUrl.query;
     const headersObject = req.headers;
     const method = req.method.toLowerCase();
+    const requestProperties = {
+        parsedUrl,
+        path,
+        trimmedPath,
+        method,
+        queryStringObject,
+        headersObject,
+    };
 
     const decoder = new StringDecoder('utf-8');
     let realData = '';
+
+    const chosenHandler = routes[trimmedPath] ? routes[trimmedPath] : notFoundHandler;
+
+    chosenHandler(requestProperties, (statusCode, payload) => {
+        // eslint-disable-next-line no-param-reassign
+        statusCode = typeof (statusCode) === 'number' ? statusCode : 500;
+        // eslint-disable-next-line no-param-reassign
+        payload = typeof (payload) === 'object' ? payload : {};
+
+        const payloadString = JSON.stringify(payload);
+
+        // RETURN THE FINAL RESPONSE
+
+        res.writeHead(statusCode);
+        res.end(payloadString);
+    });
+
     req.on('data', (buffer) => {
         realData += decoder.write(buffer);
     });
@@ -34,7 +63,6 @@ handler.handleReqRes = (req, res) => {
         console.log(realData);
         res.end('hello world');
     });
-    // response handler
 };
 
 module.exports = handler;
